@@ -126,6 +126,10 @@ class SessionMerger:
 
         return True
 
+    def _generate_msg_id(self):
+        """Generate a message ID with 'msg_' prefix for opencode compatibility."""
+        return "msg_" + uuid.uuid4().hex[:26]
+
     def copy_messages(self, conn, source_id, target_id):
         """Copy messages and parts from source to target with NEW UUIDs.
 
@@ -141,7 +145,7 @@ class SessionMerger:
         ).fetchall()
 
         for msg in messages:
-            new_msg_id = str(uuid.uuid4())
+            new_msg_id = self._generate_msg_id()
             message_map[msg["id"]] = new_msg_id
             conn.execute(
                 """INSERT INTO message (id, session_id, time_created, time_updated, data)
@@ -162,7 +166,7 @@ class SessionMerger:
         ).fetchall()
 
         for part in parts:
-            new_part_id = str(uuid.uuid4())
+            new_part_id = self._generate_msg_id()
             new_msg_id = message_map[part["message_id"]]
             conn.execute(
                 """INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
@@ -181,7 +185,7 @@ class SessionMerger:
 
     def insert_separator(self, conn, target_id, source_title, msg_count):
         """Insert a separator message before merged content."""
-        separator_id = str(uuid.uuid4())
+        separator_id = self._generate_msg_id()
         now_ms = int(time.time() * 1000)
         separator_text = (
             f"\n--- MERGED FROM: {source_title} ({msg_count} messages) ---\n"
@@ -203,7 +207,7 @@ class SessionMerger:
             """INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
-                str(uuid.uuid4()),
+                self._generate_msg_id(),
                 separator_id,
                 target_id,
                 now_ms,
@@ -214,7 +218,7 @@ class SessionMerger:
 
     def insert_merge_summary(self, conn, target_id, sources, backup_path):
         """Insert a SYSTEM merge summary message into target session."""
-        summary_id = str(uuid.uuid4())
+        summary_id = self._generate_msg_id()
         now_ms = int(time.time() * 1000)
 
         source_lines = []
@@ -245,7 +249,7 @@ class SessionMerger:
             """INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
-                str(uuid.uuid4()),
+                self._generate_msg_id(),
                 summary_id,
                 target_id,
                 now_ms,
